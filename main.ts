@@ -16,7 +16,7 @@
 // repository's VIDEO.json. Before submitting, VIDEO.json must name the
 // published video; the placeholder it ships with is refused by the gate.
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Outside the grader's container these two variables stand in for /bot
@@ -26,6 +26,21 @@ const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
 const source = join(botDir, 'VIDEO.json');
 const target = join(outputDir, 'VIDEO.json');
+
+// Read the link first, so a missing or malformed VIDEO.json fails here
+// with a plain message instead of a bare copy error: the gate reads the
+// same file, so it must hold an object with a string url.
+let link: unknown;
+try {
+  link = JSON.parse(readFileSync(source, 'utf8')) as unknown;
+} catch (error) {
+  console.error(`VIDEO.json in ${botDir} could not be read as JSON: ${(error as Error).message}`);
+  process.exit(1);
+}
+if (typeof link !== 'object' || link === null || typeof (link as { url?: unknown }).url !== 'string') {
+  console.error(`VIDEO.json in ${botDir} does not hold an object with a string url`);
+  process.exit(1);
+}
 
 mkdirSync(outputDir, { recursive: true });
 
